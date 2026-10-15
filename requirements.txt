@@ -1,0 +1,12 @@
+# requirements.txt
+fastapi
+uvicorn
+pydantic
+pydantic-settings
+langgraph
+langchain-openai
+browser-use
+playwright
+asyncpg
+psycopg2-binary
+python-dotenv
