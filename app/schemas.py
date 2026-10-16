@@ -29,3 +29,22 @@ class JobEvaluation(BaseModel):
     missing_skills: List[str] = Field(description="Skills required by the job that are missing from the resume")
     recommend_apply: bool = Field(description="True if the score is > 85 and major requirements are met")
     reasoning: str = Field(description="A one-sentence explanation of why the score was given")
+
+
+    # ==========================================
+# 2. REST API Request / Response DTOs
+# ==========================================
+class JobMatchRequest(BaseModel):
+    """Request payload for text-based matching."""
+    resume_text: str = Field(..., description="The candidate's full resume text")
+    target_urls: List[str] = Field(..., description="A list of job posting URLs to scrape and evaluate")
+
+
+class JobMatchResponse(BaseModel):
+    """Response payload returned to the API client."""
+    url: str
+    status: str
+    db_id: Optional[int] = None
+    match_score: Optional[int] = None
+    missing_skills: Optional[List[str]] = None
+    reasoning: Optional[str] = None

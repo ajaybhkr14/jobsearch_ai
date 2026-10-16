@@ -3,33 +3,64 @@ import os
 import asyncpg
 from typing import List, Dict, Any, Optional
 from langchain_openai import OpenAIEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from app.schemas import JobPostingSchema
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Initialize the OpenAI Embedding Model
-# This requires OPENAI_API_KEY to be set in your .env file
-embedding_model = OpenAIEmbeddings(
-    model="text-embedding-3-small", 
-    openai_api_key=os.getenv("OPENAI_API_KEY")
-)
+# ==========================================
+# Dynamic Embedding Factory
+# ==========================================
+def get_embedding_model():
+    """
+    Returns the appropriate embedding model based on LLM_PROVIDER in .env.
+    Note: Ensure vector dimensions match your DB schema.
+    - OpenAI text-embedding-3-small outputs 1536 dimensions.
+    - Gemini text-embedding-004 outputs 768 dimensions.
+    """
+    provider = os.getenv("LLM_PROVIDER", "gemini").lower()
+    
+    if provider == "openai":
+        print("🔢 Using Embedding Model: OpenAI (text-embedding-3-small)")
+        return OpenAIEmbeddings(
+            model="text-embedding-3-small",
+            openai_api_key=os.getenv("OPENAI_API_KEY")
+        )
+    elif provider == "gemini":
+        print("🔢 Using Embedding Model: Google Gemini (models/text-embedding-004)")
+        return GoogleGenerativeAIEmbeddings(
+            model="models/text-embedding-004",
+            google_api_key=os.getenv("GEMINI_API_KEY")
+        )
+    else:
+        raise ValueError(f"Unknown provider: {provider}. Use 'gemini' or 'openai'.")
 
-def generate_embedding(text: str) -> List[float]:
-    """
-    Takes a string of text and asks OpenAI to convert it into a vector (array of 1536 numbers).
-    """
+
+# Initialize global embedding model instance
+embedding_model = get_embedding_model()
+
+
+def generate_embedding(text: str) -> list[float]:
+    """Generates vector embeddings for a given text using the selected provider."""
     return embedding_model.embed_query(text)
 
-async def get_db_connection():
-    """Establishes an async connection to Postgres."""
-    return await asyncpg.connect(
-        host=os.getenv("DB_HOST", "localhost"),
-        port=int(os.getenv("DB_PORT", "5432")),
-        user=os.getenv("DB_USER", "postgres"),
-        password=os.getenv("DB_PASSWORD", "postgres"),
-        database=os.getenv("DB_NAME", "postgres")
-    )
+db_pool = None
+
+async def init_connection_pool():
+    """Creates a pool of reusable database connections."""
+    global db_pool
+    if db_pool is None:
+        db_pool = await asyncpg.create_pool(
+            host=os.getenv("DB_HOST", "localhost"),
+            port=int(os.getenv("DB_PORT", "5432")),
+            user=os.getenv("DB_USER", "postgres"),
+            password=os.getenv("DB_PASSWORD", "postgres"),
+            database=os.getenv("DB_NAME", "postgres"),
+            min_size=1,
+            max_size=10
+        )
+    return db_pool
 
 async def save_job_to_db(job: JobPostingSchema) -> int:
     """

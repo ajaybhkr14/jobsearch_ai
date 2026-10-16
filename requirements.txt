@@ -1,12 +1,15 @@
-# requirements.txt
 fastapi
 uvicorn
 pydantic
 pydantic-settings
 langgraph
 langchain-openai
+langchain-google-genai
+google-generativeai
 browser-use
 playwright
 asyncpg
 psycopg2-binary
 python-dotenv
+PyMuPDF
+python-multipart
